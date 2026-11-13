@@ -13,3 +13,29 @@ header nav a[aria-current=page]{color:#ffd27b;text-decoration:underline;text-und
 .formula-card button{justify-self:start;font-size:.84rem;cursor:pointer}
 .formula-group{margin:32px 0 8px}
 #angles math{font-size:1.1rem}
+.visuals{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px}
+.properties{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin-bottom:0}
+.properties div{background:#eef2fb;padding:8px 10px;border-radius:8px}
+.properties dt{font-size:.82rem;color:#425271}
+.properties dd{margin:2px 0 0;font-weight:700}
+.equation{background:#f0f3fa;border-radius:8px;padding:10px;overflow:auto;margin:8px 0}
+.equation math{font-size:1.22rem;user-select:text}
+#sandbox-panel label{display:inline-flex;flex-wrap:wrap;align-items:center;gap:7px;margin:5px 8px 5px 0}
+#sandbox-panel input:not([type=range]){font:inherit;padding:8px;width:145px;border:1px solid #a7b3ca;border-radius:8px}
+#sandbox-panel [hidden]{display:none}
+.invalid-sandbox canvas,.invalid-sandbox .result{display:none}
+#unit-circle{height:170px;max-width:250px}
+@media(max-width:650px){
+ header{display:block;padding:10px 12px}header nav{margin-top:8px;flex-wrap:nowrap;overflow:auto;gap:5px;padding-bottom:5px}
+ header nav a{white-space:nowrap;flex:none;padding:9px 8px;background:#2c3d60;border-radius:7px;font-size:.85rem}
+ main{padding:0 12px 35px}section{padding-top:20px}
+ .intro img{display:none}.intro{display:block}h1{font-size:clamp(30px,9vw,43px)}
+ .visuals{grid-template-columns:1fr}.visuals canvas{height:210px}.visuals #inverse-circle{height:195px}
+ .stepper{display:grid;grid-template-columns:1fr;gap:5px}.stepper button{text-align:left;min-height:42px}
+ .slider{display:flex;margin:8px 0}.slider input{width:100%;min-height:28px}
+ .controls{display:block}select,summary{min-height:42px}.formula-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:650px){
+ header nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+ header nav a{white-space:normal;min-height:42px;display:flex;align-items:center}
+}

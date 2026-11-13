@@ -61,22 +61,20 @@ let stage = 0;
 function inverse(){
   const kind=$("inverse-kind").value, s=specs[kind], a=+$("inverse-input").value;
   const valid=!bounded(s)||Math.abs(a)<=1;
-  const other=stage>0&&$("inverse-branch").value==="1";
-  const alternate={sin:[P/2,3*P/2],cos:[-P,0],tg:[P/2,3*P/2],ctg:[-P,0]};
-  const [lo,hi]=other?alternate[kind]:s.limits;
-  const inverseAngle=x=>other?({sin:()=>P-s.g(x),cos:()=>-s.g(x),tg:()=>s.g(x)+P,ctg:()=>s.g(x)-P}[kind])():s.g(x);
-  const range=other?(bounded(s)?"[":"(")+angle(lo)+"; "+angle(hi)+(bounded(s)?"]":")"):s.range;
-  $("branch-control").hidden=stage===0;
+  const [lo,hi]=s.limits;
+  const inverseAngle=s.g;
+  const range=s.range;
+  drawInverseCircle(kind,valid?a:null);
   $("inverse-a").textContent=num(a);
   $("inverse-range").textContent="Допустимый вход a: "+(bounded(s)?"[−1; 1]":"ℝ")+(stage?" · Углы выбранной ветви: "+range:"");
   const notes=[
     "Двигайте горизонтальный уровень y = a. Каждая точка пересечения даёт угол. Если точек несколько, угол по одному значению определить однозначно нельзя.",
-    "Оставьте одну монотонную ветвь. На ней горизонтальная линия пересекает график ровно один раз при каждом допустимом a. Сравните стандартную и другую ветвь.",
+    "Оставьте одну монотонную ветвь. На ней горизонтальная линия пересекает график ровно один раз при каждом допустимом a. На окружности выделена дуга, которую используют в школе.",
     "Меняем координаты местами: (угол, значение) превращается в (значение, угол). Это отражение относительно y = x."
   ];
   $("stage-note").textContent=notes[stage];
   $("inverse-legend").textContent=["Синий — исходный график · золотой — уровень a","Синий — выбранная ветвь · золотой — уровень a","Синий — выбранная ветвь · золотой — обратный график · пунктир — y = x"][stage];
-  const extent=stage===0?2*P:other?5:4;
+  const extent=stage===0?2*P:4;
   const c=chart("inverse-graph",-extent,extent,stage===2?-extent:-2.5,stage===2?extent:2.5,stage===2);
   if(stage===0) direct(c,s,-extent,extent,blue);
   else c.curve(s.f,lo+(bounded(s)?0:1e-7),hi-(bounded(s)?0:1e-7),blue,3);
@@ -101,9 +99,43 @@ function inverse(){
     c.dot(b,a,blue);
     if(stage===2){c.line([[a,b],[b,a]],"#65738c",1,[4,4]);c.dot(a,b,gold);}
     const value=angle(b);
-    $("inverse-result").textContent=stage===1?"На выбранной ветви угол один: "+value+".":(other?"Обратная к выбранной ветви":"Стандартная "+s.inv)+" при a = "+num(a)+": "+value+" рад.";
+    $("inverse-result").textContent=stage===1?"На выбранной ветви угол один: "+value+".":s.inv+" при a = "+num(a)+": "+value+" рад.";
   }
 }
+const inverseFacts={
+  sin:["Возрастает","Нечётная","arcsin 0 = 0; arcsin 1 = π/2","На правой полуокружности высота sin x проходит все значения от −1 до 1 по одному разу. Вторая половина окружности дала бы ещё один угол для той же высоты."],
+  cos:["Убывает","Ни чётная, ни нечётная","arccos 0 = π/2; arccos 1 = 0","На верхней полуокружности горизонтальная координата cos x убывает от 1 до −1. На этой дуге каждой горизонтальной координате соответствует один угол."],
+  tg:["Возрастает","Нечётная","arctg 0 = 0; arctg 1 = π/4","На правой полуокружности отношение sin x / cos x пробегает все действительные числа. Концы исключаем: на них cos x = 0."],
+  ctg:["Убывает","Ни чётная, ни нечётная","arcctg 0 = π/2; arcctg 1 = π/4","На верхней полуокружности отношение cos x / sin x пробегает все действительные числа. Концы исключаем: на них sin x = 0."]
+};
+function drawInverseCircle(kind,a){
+  const s=specs[kind], c=chart("inverse-circle",-1.3,1.3,-1.3,1.3,true);
+  const points=(lo,hi)=>Array.from({length:81},(_,i)=>{const t=lo+(hi-lo)*i/80;return [Math.cos(t),Math.sin(t)];});
+  c.line(points(0,2*P),"#a8b4ca",1.5);
+  if(stage) {
+    c.line(points(...s.limits),blue,4);
+    for(const t of s.limits)c.dot(Math.cos(t),Math.sin(t),blue,bounded(s));
+  }
+  if(a!==null){
+    const angles=stage?[s.g(a)]:roots(kind,a);
+    for(const t of angles){
+      const x=Math.cos(t),y=Math.sin(t);
+      c.line([[0,0],[x,y]],gold,2);
+      if(kind==="sin")c.line([[0,y],[x,y]],gold,1,[3,3]);
+      if(kind==="cos")c.line([[x,0],[x,y]],gold,1,[3,3]);
+      c.dot(x,y,gold);
+    }
+    if(!stage&&!bounded(s)&&angles.length){
+      const t=angles[0]+P;
+      c.dot(Math.cos(t),Math.sin(t),gold);
+    }
+  }
+  $("circle-note").textContent=(stage?"Синяя дуга — главная ветвь. ":"Золотые точки соответствуют уровню a. ")+({sin:"sin x — высота точки.",cos:"cos x — горизонтальная координата.",tg:"tg x = sin x / cos x.",ctg:"ctg x = cos x / sin x."}[kind]);
+  const [mono,parity,example,reason]=inverseFacts[kind];
+  $("inverse-properties").innerHTML=[["Допустимые входы",bounded(s)?"[−1; 1]":"ℝ"],["Углы на выходе",s.range],["Монотонность",mono],["Чётность",parity],["Примеры",example]].map(([key,value])=>'<div><dt>'+key+'</dt><dd>'+value+'</dd></div>').join("");
+  $("branch-reason").textContent=reason;
+}
+
 document.querySelectorAll("[data-stage]").forEach(button=>button.addEventListener("click",()=>{
   stage=Number(button.dataset.stage);
   document.querySelectorAll("[data-stage]").forEach(b=>b.setAttribute("aria-pressed",String(b===button)));
@@ -157,10 +189,11 @@ function circle(cId,values,k,s){
   });
 }
 function plot(prefix,inequality) {
-  const kind=$(prefix+"-kind").value,s=specs[kind],a=+$(prefix+"-a").value,k=+$(prefix+"-k").value;
+  const kind=$(prefix+"-kind").value,s=specs[kind],a=$("sandbox-value")?readMath($("sandbox-value").value):+$(prefix+"-a").value,k=+$(prefix+"-k").value;
+  if (!Number.isFinite(a)) return;
   $(prefix+"-value").textContent=num(a);$(prefix+"-shift").textContent=k;
-  const lo=-6*P,hi=6*P,c=chart(prefix+"-graph",lo,hi,-3.65,3.2);
-  for(let n=-6;n<=6;n+=2){c.line([[n*P,-.12],[n*P,.12]],"#8591a8",1);c.label(n*P,0,angle(n*P),-11,17);}
+  const lo=-6*P,hi=6*P,c=chart(prefix+"-graph",lo,hi,Math.min(-3.65,a-.2),Math.max(3.2,a+.2));
+  for(let n=-6;n<=6;n+=($(prefix+"-graph").clientWidth<460?3:2)){c.line([[n*P,-.12],[n*P,.12]],"#8591a8",1);c.label(n*P,0,angle(n*P),-11,17);}
   poles(s,lo,hi).forEach(x=>c.line([[x,-3.65],[x,3.2]],"#b7bfce",1,[3,4]));
   direct(c,s,lo,hi,blue);
   c.line([[lo,a],[hi,a]],gold,1.5,[5,4]);
@@ -191,11 +224,13 @@ function plot(prefix,inequality) {
   $("ineq-result").textContent=pieces.length?"На выбранном периоде (k = "+k+"): "+pieces.map(repr).join(" ∪ ")+". Эти части повторяются через "+period+".":"Решений нет.";
 }
 function render(){
+  if ($("sandbox-mode")) { renderSandbox(); return; }
   if ($("inverse-graph")) inverse();
   if ($("eq-graph")) plot("eq",false);
   if ($("ineq-graph")) plot("ineq",true);
 }
 document.addEventListener("input",event=>{
+  if ($("sandbox-mode")) { renderSandbox(); return; }
   if(event.target.id.startsWith("inverse-"))inverse();
   if(event.target.id.startsWith("eq-"))plot("eq",false);
   if(event.target.id.startsWith("ineq-"))plot("ineq",true);
@@ -211,9 +246,69 @@ const tasks=[
   ["Границы неравенства","Решите cos x < −1/2.","На одном обороте подходят углы между 2π/3 и 4π/3. Ответ: (2π/3 + 2πk; 4π/3 + 2πk)."],
   ["Точки разрыва","Решите tg x ≥ 1.","На каждой ветви tg возрастает. Ответ: [π/4 + πk; π/2 + πk). Правая граница исключена, поскольку tg там не определён."]
 ];
-if ($("tasks")) $("tasks").innerHTML=tasks.map(([label,q,a])=>'<article class="card"><h3>'+label+'</h3><p>'+q+'</p><details><summary>Решение</summary><p>'+a+'</p></details></article>').join("");
+const taskMath=[
+  '<mi>arcsin</mi><mo>⁡</mo><mfrac><mn>3</mn><mn>2</mn></mfrac>',
+  '<mi>arccos</mi><mo>(</mo><mi>cos</mi><mo>⁡</mo><mfrac><mrow><mn>4</mn><mi>π</mi></mrow><mn>3</mn></mfrac><mo>)</mo>',
+  '<mi>cos</mi><mi>x</mi><mo>+</mo><mi>sin</mi><mi>x</mi><mo>=</mo><mn>1</mn>',
+  '<msup><mi>cos</mi><mn>2</mn></msup><mi>x</mi><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><mi>cos</mi><mi>x</mi></mrow><mn>2</mn></mfrac>',
+  '<mi>sin</mi><mi>x</mi><mo>+</mo><mi>sin</mi><mn>2</mn><mi>x</mi><mo>=</mo><mi>cos</mi><mi>x</mi><mo>+</mo><mn>2</mn><msup><mi>cos</mi><mn>2</mn></msup><mi>x</mi>',
+  '<msup><mi>sin</mi><mn>2</mn></msup><mi>x</mi><mo>−</mo><mn>3</mn><mi>sin</mi><mi>x</mi><mi>cos</mi><mi>x</mi><mo>+</mo><mn>2</mn><msup><mi>cos</mi><mn>2</mn></msup><mi>x</mi><mo>=</mo><mn>0</mn>',
+  '<mi>cos</mi><mi>x</mi><mo>&lt;</mo><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac>',
+  '<mi>tg</mi><mi>x</mi><mo>≥</mo><mn>1</mn>'
+];
+const taskAnswers=[
+  "Не определён", "2π/3", "x = 2πk или x = π/2 + 2πk",
+  "x = ±π/3 + 2πk или x = π + 2πk",
+  "x = π/4 + πk или x = ±2π/3 + 2πk",
+  "x = π/4 + πk или x = arctg(2) + πk",
+  "x ∈ (2π/3 + 2πk; 4π/3 + 2πk)",
+  "x ∈ [π/4 + πk; π/2 + πk)"
+];
+function answerMath(text){
+  const atoms=value=>value.match(/arctg|[0-9]+|[xπk]|[^ ]/g).map(t=>{
+    const tag=/^\d+$/.test(t)?"mn":/^(x|π|k|arctg)$/.test(t)?"mi":"mo";
+    return "<"+tag+">"+t+"</"+tag+">";
+  }).join("");
+  if(text==="Не определён")return "<mtext>"+text+"</mtext>";
+  return text.split(/(\d*π\/\d+| или )/).filter(Boolean).map(part=>{
+    if(part===" или ")return "<mtext> или </mtext>";
+    if(!part.includes("/"))return atoms(part);
+    const [a,b]=part.split("/");
+    return "<mfrac><mrow>"+atoms(a)+"</mrow><mn>"+b+"</mn></mfrac>";
+  }).join("");
+}
+if ($("tasks")) $("tasks").innerHTML=tasks.map(([label,q,a],i)=>'<article class="card"><h3>'+label+'</h3><p>'+q.split(' ')[0]+'</p><div class="equation"><math>'+taskMath[i]+'</math></div><details><summary>Решение</summary><p>'+a+'</p><div class="equation"><math>'+answerMath(taskAnswers[i])+'</math></div></details></article>').join("");
 const angles=[
  ["0°","0","0","1","0","—"],["30°","π/6","1/2","√3/2","√3/3","√3"],["45°","π/4","√2/2","√2/2","1","1"],["60°","π/3","√3/2","1/2","√3","√3/3"],["90°","π/2","1","0","—","0"],["120°","2π/3","√3/2","−1/2","−√3","−√3/3"],["135°","3π/4","√2/2","−√2/2","−1","−1"],["150°","5π/6","1/2","−√3/2","−√3/3","−√3"],["180°","π","0","−1","0","—"],["210°","7π/6","−1/2","−√3/2","√3/3","√3"],["225°","5π/4","−√2/2","−√2/2","1","1"],["240°","4π/3","−√3/2","−1/2","√3","√3/3"],["270°","3π/2","−1","0","—","0"],["300°","5π/3","−√3/2","1/2","−√3","−√3/3"],["315°","7π/4","−√2/2","√2/2","−1","−1"],["330°","11π/6","−1/2","√3/2","−√3/3","−√3"],["360°","2π","0","1","0","—"]
 ];
 if ($("angles")) $("angles").innerHTML='<table><caption>Табличные углы (— означает, что значение не определено)</caption><thead><tr>'+["Градусы","Радианы","sin","cos","tg","ctg"].map(x=>'<th scope="col">'+x+'</th>').join("")+'</tr></thead><tbody>'+angles.map(row=>'<tr>'+row.map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")+'</tbody></table>';
+function readMath(raw){
+  const text=raw.trim().replace(/−/g,"-").replace(/,/g,".").replace(/\s+/g,"");
+  const match=/^([+-]?)(?:(\d+(?:\.\d+)?|\.\d+)?(π|pi|√\d+(?:\.\d+)?)|(\d+(?:\.\d+)?|\.\d+))(?:\/(\d+(?:\.\d+)?))?$/i.exec(text);
+  if(!match)return NaN;
+  const [,sign,coefficient,symbol,decimal,denominator]=match;
+  const value=symbol?(coefficient?+coefficient:1)*(symbol.startsWith("√")?Math.sqrt(+symbol.slice(1)):P):+decimal;
+  return (sign==="-"?-1:1)*value/(denominator?+denominator:1);
+}
+function renderSandbox(){
+  const prefix=$("sandbox-mode").value, inequality=prefix==="ineq", a=readMath($("sandbox-value").value);
+  $("sandbox-eq").hidden=inequality;
+  $("sandbox-ineq").hidden=!inequality;
+  $("sandbox-error").textContent=Number.isFinite(a)?"":"Введите число, дробь, π или корень, например √2/2.";
+  const area=$("sandbox-"+prefix);
+  area.classList.toggle("invalid-sandbox",!Number.isFinite(a));
+  if(!Number.isFinite(a)){$("sandbox-check").textContent="";return;}
+  plot(prefix,inequality);
+  const x=readMath($("sandbox-angle").value), kind=$(prefix+"-kind").value,s=specs[kind];
+  if(!Number.isFinite(x)){$("sandbox-check").textContent="Введите угол в радианах, например π/6.";return;}
+  if(s.pole!==undefined&&near((x-s.pole)/P,Math.round((x-s.pole)/P))){
+    $("sandbox-check").textContent=kind+" x в этой точке не определён.";return;
+  }
+  const y=s.f(x), sign=inequality?$("ineq-sign").value:"=", equal=near(y,a);
+  const valid={"=":equal,">":!equal&&y>a,"<":!equal&&y<a,"≥":equal||y>a,"≤":equal||y<a}[sign];
+  $("sandbox-check").textContent=kind+"("+angle(x)+") ≈ "+num(y)+". Угол "+(valid?"подходит.":"не подходит.");
+}
+if($("sandbox-mode")){
+  for(const prefix of ["eq","ineq"]) $(prefix+"-a").closest("label").hidden=true;
+}
 render();
