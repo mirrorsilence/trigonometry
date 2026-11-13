@@ -1,2 +1,15 @@
 :root{--ink:#1e2a44;--paper:#f7f5ef;--card:#fffdf8;--blue:#2456b4;--gold:#986000;--line:#ded9cc}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,sans-serif}header{background:var(--ink);color:white;padding:14px max(4vw,16px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}header a{color:inherit;text-decoration:none;font-weight:700}header a:hover{text-decoration:underline}header small{color:#f4bb4c;margin-left:6px}nav{display:flex;gap:clamp(8px,2vw,24px);flex-wrap:wrap}nav a{font-size:.9rem}main{max-width:1080px;margin:auto;padding:0 18px 65px}section{padding-top:42px}section+section{margin-top:32px;border-top:1px solid var(--line)}h1,h2,h3,p{margin:0 0 10px}h1{font-size:clamp(36px,7vw,68px);line-height:1.03;letter-spacing:-.055em}h2{font-size:clamp(26px,4vw,40px);line-height:1.12;letter-spacing:-.03em}h3{font-size:19px}.eyebrow,.legend{color:#72551c;font-weight:700;font-size:.85rem}.intro{display:grid;grid-template-columns:1fr .85fr;gap:24px;align-items:center}.intro img{width:100%;height:auto;border-radius:18px}.panel,.card,.table-wrap{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:clamp(12px,2.4vw,24px);margin-top:14px}.panel{background:#eef2fb}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}.controls{display:flex;gap:14px;flex-wrap:wrap;align-items:center}.slider{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 12px 8px 0}output{font-weight:700;min-width:2.2em}input{accent-color:var(--blue);max-width:100%}select,button{font:inherit;background:white;color:var(--ink);border:1px solid #a7b3ca;border-radius:8px;padding:5px 8px}canvas{display:block;width:100%;height:300px;background:white;border-radius:10px;margin:10px 0}.result{color:#193d83;font-weight:750;background:white;padding:9px 12px;border-radius:8px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:center}td,th{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}summary{cursor:pointer;font-weight:700;color:var(--blue)}details p{margin:8px 0 0}:focus-visible{outline:3px solid #2d64c9;outline-offset:3px}@media(max-width:580px){.intro{grid-template-columns:1fr}.intro img{max-height:200px;object-fit:cover}canvas{height:240px}}
+
+header nav a[aria-current=page]{color:#ffd27b;text-decoration:underline;text-underline-offset:5px}
+.stepper{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.stepper button[aria-pressed=true]{background:var(--ink);color:white;border-color:var(--ink)}
+#stage-note{max-width:72ch}
+#branch-control{margin-left:10px}
+.formula-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,335px),1fr));gap:12px;margin:10px 0 20px}
+.formula-card{margin:0;padding:14px;display:grid;gap:10px;align-content:space-between}
+.formula-card math{font-size:1.26rem;user-select:text}
+.formula-card .equation{overflow:auto;padding:5px 1px}
+.formula-card button{justify-self:start;font-size:.84rem;cursor:pointer}
+.formula-group{margin:32px 0 8px}
+#angles math{font-size:1.1rem}

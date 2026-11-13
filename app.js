@@ -56,20 +56,59 @@ function direct(c,s,lo,hi,color) {
   cuts.slice(1).forEach((b,i)=>c.curve(s.f,cuts[i]+1e-6,b-1e-6,color));
 }
 const options=Object.keys(specs).map(k=>'<option>'+k+'</option>').join("");
-$("inverse-kind").innerHTML=options;
+if ($("inverse-kind")) $("inverse-kind").innerHTML=options;
+let stage = 0;
 function inverse(){
-  const s=specs[$("inverse-kind").value], a=+$("inverse-input").value;
+  const kind=$("inverse-kind").value, s=specs[kind], a=+$("inverse-input").value;
   const valid=!bounded(s)||Math.abs(a)<=1;
+  const other=stage>0&&$("inverse-branch").value==="1";
+  const alternate={sin:[P/2,3*P/2],cos:[-P,0],tg:[P/2,3*P/2],ctg:[-P,0]};
+  const [lo,hi]=other?alternate[kind]:s.limits;
+  const inverseAngle=x=>other?({sin:()=>P-s.g(x),cos:()=>-s.g(x),tg:()=>s.g(x)+P,ctg:()=>s.g(x)-P}[kind])():s.g(x);
+  const range=other?(bounded(s)?"[":"(")+angle(lo)+"; "+angle(hi)+(bounded(s)?"]":")"):s.range;
+  $("branch-control").hidden=stage===0;
   $("inverse-a").textContent=num(a);
-  $("inverse-range").textContent="Вход a ∈ "+(bounded(s)?"[−1; 1]":"ℝ")+" · Выход x ∈ "+s.range;
-  $("inverse-result").textContent=valid?s.inv+"("+num(a)+") "+(angle(s.g(a)).startsWith("≈")?"":"= ")+angle(s.g(a))+" рад.":"В действительных числах "+s.inv+"("+num(a)+") не определён: |a| > 1.";
-  const c=chart("inverse-graph",-4,4,-4,4,true);
-  c.line([[-4,-4],[4,4]],"#96a0b2",1,[5,5]);
-  direct(c,s,-4,4,"#d3d9e5");
-  c.curve(s.f,s.limits[0]+1e-7,s.limits[1]-1e-7,blue,3);
-  c.curve(s.g,bounded(s)?-1:-4,bounded(s)?1:4,gold,3);
-  if(valid){const b=s.g(a);c.line([[a,b],[b,a]],"#65738c",1,[4,4]);c.dot(b,a,blue);c.dot(a,b,gold);}
+  $("inverse-range").textContent="Допустимый вход a: "+(bounded(s)?"[−1; 1]":"ℝ")+(stage?" · Углы выбранной ветви: "+range:"");
+  const notes=[
+    "Двигайте горизонтальный уровень y = a. Каждая точка пересечения даёт угол. Если точек несколько, угол по одному значению определить однозначно нельзя.",
+    "Оставьте одну монотонную ветвь. На ней горизонтальная линия пересекает график ровно один раз при каждом допустимом a. Сравните стандартную и другую ветвь.",
+    "Меняем координаты местами: (угол, значение) превращается в (значение, угол). Это отражение относительно y = x."
+  ];
+  $("stage-note").textContent=notes[stage];
+  $("inverse-legend").textContent=["Синий — исходный график · золотой — уровень a","Синий — выбранная ветвь · золотой — уровень a","Синий — выбранная ветвь · золотой — обратный график · пунктир — y = x"][stage];
+  const extent=stage===0?2*P:other?5:4;
+  const c=chart("inverse-graph",-extent,extent,stage===2?-extent:-2.5,stage===2?extent:2.5,stage===2);
+  if(stage===0) direct(c,s,-extent,extent,blue);
+  else c.curve(s.f,lo+(bounded(s)?0:1e-7),hi-(bounded(s)?0:1e-7),blue,3);
+  if(stage===2){
+    c.line([[-extent,-extent],[extent,extent]],"#96a0b2",1,[5,5]);
+    c.curve(inverseAngle,bounded(s)?-1:-extent,bounded(s)?1:extent,gold,3);
+  } else c.line([[-extent,a],[extent,a]],gold,1.5,[5,4]);
+  if(!valid) {
+    $("inverse-result").textContent="Пересечений нет: "+kind+" принимает значения только от −1 до 1.";
+    return;
+  }
+  if(stage===0){
+    const points=[];
+    for(const x of roots(kind,a))for(let k=-4;k<=4;k++){
+      const t=x+k*s.period;
+      if(t>=-extent&&t<=extent&&!points.some(p=>near(p,t)))points.push(t);
+    }
+    points.forEach(x=>c.dot(x,a,gold));
+    $("inverse-result").textContent="Пересечений на рисунке: "+points.length+". Углы: "+points.sort((a,b)=>a-b).map(angle).join(", ")+".";
+  }else{
+    const b=inverseAngle(a);
+    c.dot(b,a,blue);
+    if(stage===2){c.line([[a,b],[b,a]],"#65738c",1,[4,4]);c.dot(a,b,gold);}
+    const value=angle(b);
+    $("inverse-result").textContent=stage===1?"На выбранной ветви угол один: "+value+".":(other?"Обратная к выбранной ветви":"Стандартная "+s.inv)+" при a = "+num(a)+": "+value+" рад.";
+  }
 }
+document.querySelectorAll("[data-stage]").forEach(button=>button.addEventListener("click",()=>{
+  stage=Number(button.dataset.stage);
+  document.querySelectorAll("[data-stage]").forEach(b=>b.setAttribute("aria-pressed",String(b===button)));
+  inverse();
+}));
 function roots(kind,a){
   const s=specs[kind];
   if(bounded(s)&&Math.abs(a)>1)return [];
@@ -84,7 +123,8 @@ function controls(prefix,inequality){
     +'<label class="slider">Уровень a <output id="'+prefix+'-value"></output><input id="'+prefix+'-a" type="range" min="-2" max="2" step=".01" value=".5"></label>'
     +'<label class="slider">Сдвиг k <output id="'+prefix+'-shift"></output><input id="'+prefix+'-k" type="range" min="-2" max="2" step="1" value="0"></label>';
 }
-controls("eq",false);controls("ineq",true);
+if ($("eq-controls")) controls("eq",false);
+if ($("ineq-controls")) controls("ineq",true);
 function intervals(kind,a,sign){
   const s=specs[kind], closed=sign==="≥"||sign==="≤", greater=sign===">"||sign==="≥";
   const ok=y=>greater?(closed?y>=a:y>a):(closed?y<=a:y<a);
@@ -150,7 +190,11 @@ function plot(prefix,inequality) {
   const repr=([l,r,lc,rc])=>near(l,r)?"{"+angle(l+selected)+"}":(lc?"[":"(")+angle(l+selected)+"; "+angle(r+selected)+(rc?"]":")");
   $("ineq-result").textContent=pieces.length?"На выбранном периоде (k = "+k+"): "+pieces.map(repr).join(" ∪ ")+". Эти части повторяются через "+period+".":"Решений нет.";
 }
-function render(){inverse();plot("eq",false);plot("ineq",true);}
+function render(){
+  if ($("inverse-graph")) inverse();
+  if ($("eq-graph")) plot("eq",false);
+  if ($("ineq-graph")) plot("ineq",true);
+}
 document.addEventListener("input",event=>{
   if(event.target.id.startsWith("inverse-"))inverse();
   if(event.target.id.startsWith("eq-"))plot("eq",false);
@@ -167,9 +211,9 @@ const tasks=[
   ["Границы неравенства","Решите cos x < −1/2.","На одном обороте подходят углы между 2π/3 и 4π/3. Ответ: (2π/3 + 2πk; 4π/3 + 2πk)."],
   ["Точки разрыва","Решите tg x ≥ 1.","На каждой ветви tg возрастает. Ответ: [π/4 + πk; π/2 + πk). Правая граница исключена, поскольку tg там не определён."]
 ];
-$("tasks").innerHTML=tasks.map(([label,q,a])=>'<article class="card"><h3>'+label+'</h3><p>'+q+'</p><details><summary>Решение</summary><p>'+a+'</p></details></article>').join("");
+if ($("tasks")) $("tasks").innerHTML=tasks.map(([label,q,a])=>'<article class="card"><h3>'+label+'</h3><p>'+q+'</p><details><summary>Решение</summary><p>'+a+'</p></details></article>').join("");
 const angles=[
  ["0°","0","0","1","0","—"],["30°","π/6","1/2","√3/2","√3/3","√3"],["45°","π/4","√2/2","√2/2","1","1"],["60°","π/3","√3/2","1/2","√3","√3/3"],["90°","π/2","1","0","—","0"],["120°","2π/3","√3/2","−1/2","−√3","−√3/3"],["135°","3π/4","√2/2","−√2/2","−1","−1"],["150°","5π/6","1/2","−√3/2","−√3/3","−√3"],["180°","π","0","−1","0","—"],["210°","7π/6","−1/2","−√3/2","√3/3","√3"],["225°","5π/4","−√2/2","−√2/2","1","1"],["240°","4π/3","−√3/2","−1/2","√3","√3/3"],["270°","3π/2","−1","0","—","0"],["300°","5π/3","−√3/2","1/2","−√3","−√3/3"],["315°","7π/4","−√2/2","√2/2","−1","−1"],["330°","11π/6","−1/2","√3/2","−√3/3","−√3"],["360°","2π","0","1","0","—"]
 ];
-$("angles").innerHTML='<table><caption>Табличные углы (— означает, что значение не определено)</caption><thead><tr>'+["Градусы","Радианы","sin","cos","tg","ctg"].map(x=>'<th scope="col">'+x+'</th>').join("")+'</tr></thead><tbody>'+angles.map(row=>'<tr>'+row.map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")+'</tbody></table>';
+if ($("angles")) $("angles").innerHTML='<table><caption>Табличные углы (— означает, что значение не определено)</caption><thead><tr>'+["Градусы","Радианы","sin","cos","tg","ctg"].map(x=>'<th scope="col">'+x+'</th>').join("")+'</tr></thead><tbody>'+angles.map(row=>'<tr>'+row.map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")+'</tbody></table>';
 render();
