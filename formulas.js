@@ -57,9 +57,10 @@ const notes=[
   'В дробях знаменатель должен отличаться от нуля.',
   'Формула тангенса применима, когда обе части определены.'
 ];
-groups.forEach(([title,items],i)=>{
+function renderFormulas(target, entries, descriptions=[]) {
+entries.forEach(([title,items],i)=>{
   const section=document.createElement('div');
-  section.innerHTML='<h2 class="formula-group">'+title+'</h2>'+(notes[i]?'<p>'+notes[i]+'</p>':'')+'<div class="formula-grid"></div>';
+  section.innerHTML='<h2 class="formula-group">'+title+'</h2>'+(descriptions[i]?'<p>'+descriptions[i]+'</p>':'')+'<div class="formula-grid"></div>';
   const grid=section.lastElementChild;
   items.forEach(([math,latex])=>{
     const card=document.createElement('article');
@@ -72,8 +73,10 @@ groups.forEach(([title,items],i)=>{
     });
     grid.append(card);
   });
-  sheet.append(section);
+  target.append(section);
 });
+}
+if(sheet) renderFormulas(sheet,groups,notes);
 document.querySelectorAll('#angles td').forEach(cell=>{
   const raw=cell.textContent;
   if(raw==='—'||raw.includes('°'))return;
@@ -81,3 +84,79 @@ document.querySelectorAll('#angles td').forEach(cell=>{
   const [left,right]=raw.split('/');
   cell.innerHTML='<math>'+(right?frac(part(left),part(right)):part(left))+'</math>';
 });
+
+const y=v('y'), A=v('a'), K=v('k'), neg=z=>row(op('−'),z);
+const call=(name,arg)=>f(name,par(arg));
+const integers='<p>Во всех формулах k — любое целое число. В строках с −a подставляйте именно отрицание выбранного a.</p>';
+const descriptions=['Арксинус','Арккосинус','Арктангенс','Арккотангенс'];
+const names=['sin','cos','tg','ctg'];
+const inverses=['arcsin','arccos','arctg','arcctg'];
+const tx=z=>'\\operatorname{'+z+'}';
+const membership=(variable,left,l,r,right)=>row(variable,op('∈'),op(left),l,op(';'),r,op(right));
+const real=variable=>row(variable,op('∈'),v('ℝ'));
+const inputDomain=variable=>membership(variable,'[',neg(n(1)),n(1),']');
+const given=(formula,condition)=>row(formula,op(','),'<mspace width="0.6em"/>',condition);
+const invTarget=document.getElementById('inverse-identities');
+if(invTarget){
+  renderFormulas(invTarget,names.map((name,i)=>{
+    const inv=inverses[i], direct=tx(name), inverse=tx(inv), bounded=i<2, symmetric=i===0||i===2;
+    const ranges=[
+      membership(y,'[',neg(half),half,']'),membership(y,'[',n(0),pi,']'),
+      membership(y,'(',neg(half),half,')'),membership(y,'(',n(0),pi,')')
+    ];
+    const texRanges=['[-\\pi/2,\\pi/2]','[0,\\pi]','(-\\pi/2,\\pi/2)','(0,\\pi)'];
+    const domain=bounded?inputDomain(x):real(x), texDomain=bounded?'[-1,1]':'\\mathbb{R}';
+    return [descriptions[i],[
+      [given(eq(call(name,call(inv,x)),x),domain),direct+'('+inverse+'(x))=x,\\quad x\\in '+texDomain],
+      [given(eq(call(inv,call(name,y)),y),ranges[i]),inverse+'('+direct+'(y))=y,\\quad y\\in '+texRanges[i]],
+      [given(eq(call(inv,neg(x)),symmetric?neg(call(inv,x)):sum(pi,'−',call(inv,x))),domain),inverse+'(-x)='+(symmetric?'-':'\\pi-')+inverse+'(x),\\quad x\\in '+texDomain]
+    ]];
+  }),[
+    'Обратная композиция возвращает угол только на главной ветви.',
+    'При смене знака входа углы в сумме дают π.',
+    'Границы углов ±π/2 исключены.',
+    'При смене знака входа углы в сумме дают π. Углы 0 и π исключены.'
+  ]);
+}
+const eqTarget=document.getElementById('basic-equations');
+if(eqTarget){
+  eqTarget.innerHTML=integers;
+  const period=row(n(2),pi,K), piK=row(pi,K);
+  // The exponent k is a variable, including in the k + 1 variant.
+  const signed=(extra=false)=>'<msup>'+par(neg(n(1)))+(extra?sum(K,'+',n(1)):K)+'</msup>';
+  const root=(name,level,texLevel,answer,texAnswer)=>[
+    row(eq(fn(name),level),op('⇒'),eq(x,answer)),
+    tx(name)+' x='+texLevel+'\\;\\Rightarrow\\;x='+texAnswer+',\\quad k\\in\\mathbb{Z}'
+  ];
+  const arc=(i,z=A)=>call(inverses[i],z);
+  const R=(i,z,tex,ans,latex)=>root(names[i],z,tex,ans,latex);
+  renderFormulas(eqTarget,[
+    ['Синус',[
+      R(0,A,'a',sum(row(signed(),arc(0)),'+',piK),'(-1)^k\\arcsin a+\\pi k'),
+      R(0,neg(A),'-a',sum(row(signed(true),arc(0)),'+',piK),'(-1)^{k+1}\\arcsin a+\\pi k'),
+      R(0,n(0),'0',piK,'\\pi k'),
+      R(0,n(1),'1',sum(half,'+',period),'\\frac{\\pi}{2}+2\\pi k'),
+      R(0,neg(n(1)),'-1',sum(neg(half),'+',period),'-\\frac{\\pi}{2}+2\\pi k')
+    ]],
+    ['Косинус',[
+      R(1,A,'a',sum(row(op('±'),arc(1)),'+',period),'\\pm\\arccos a+2\\pi k'),
+      R(1,neg(A),'-a',sum(row(op('±'),par(sum(pi,'−',arc(1)))),'+',period),'\\pm(\\pi-\\arccos a)+2\\pi k'),
+      R(1,n(1),'1',period,'2\\pi k'),
+      R(1,neg(n(1)),'-1',sum(pi,'+',period),'\\pi+2\\pi k'),
+      R(1,n(0),'0',sum(half,'+',piK),'\\frac{\\pi}{2}+\\pi k')
+    ]],
+    ['Тангенс',[
+      R(2,A,'a',sum(arc(2),'+',piK),tx('arctg')+'a+\\pi k'),
+      R(2,neg(A),'-a',sum(neg(arc(2)),'+',piK),'-'+tx('arctg')+'a+\\pi k')
+    ]],
+    ['Котангенс',[
+      R(3,A,'a',sum(arc(3),'+',piK),tx('arcctg')+'a+\\pi k'),
+      R(3,neg(A),'-a',sum(sum(pi,'−',arc(3)),'+',piK),'\\pi-'+tx('arcctg')+'a+\\pi k')
+    ]]
+  ],[
+    'Для a от −1 до 1 включительно. При |a| > 1 решений нет. Ниже приведены также случаи 0, 1 и −1.',
+    'Для a от −1 до 1 включительно. При |a| > 1 решений нет. Ниже приведены также случаи 1, −1 и 0.',
+    'Подходит любое действительное a. Решения повторяются через π.',
+    'Подходит любое действительное a. Решения повторяются через π.'
+  ]);
+}
